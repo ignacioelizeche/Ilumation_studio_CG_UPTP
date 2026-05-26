@@ -6,6 +6,7 @@ import {
   type PlaygroundGeometry,
   type PlaygroundMaterial,
   type PlaygroundRenderSettings,
+  type RenderMode,
 } from '@/src/components/CanvasRenderer';
 
 const geometryOptions: Array<{
@@ -123,10 +124,13 @@ export default function PlaygroundPage() {
   const [settings, setSettings] = useState<PlaygroundRenderSettings>({
     geometry: 'cube',
     material: 'gold',
+    renderMode: 'phong',
+    autoRotate: true,
     scale: 1,
     rotation: { x: 0.45, y: 0.75, z: 0.05 },
-    lightPosition: { x: 3.5, y: 2.5, z: 3.5 },
-    lightIntensity: 1,
+    lights: [
+      { id: '1', position: { x: 3.5, y: 2.5, z: 3.5 }, intensity: 1, color: [1, 1, 1] }
+    ],
     ambientLight: 0.28,
     cameraPosition: { x: 0, y: 0.35, z: 4.5 },
     backgroundColor: [0.04, 0.07, 0.12],
@@ -136,7 +140,7 @@ export default function PlaygroundPage() {
   const activeMaterial = materialOptions.find(option => option.value === settings.material)!;
 
   const updateVector = (
-    key: 'rotation' | 'lightPosition' | 'cameraPosition',
+    key: 'rotation' | 'cameraPosition',
     axis: 'x' | 'y' | 'z',
     value: number
   ) => {
@@ -149,104 +153,75 @@ export default function PlaygroundPage() {
     }));
   };
 
+  const updateLight = (
+    index: number,
+    updates: Partial<typeof settings.lights[number]>
+  ) => {
+    setSettings(current => {
+      const newLights = [...current.lights];
+      newLights[index] = { ...newLights[index], ...updates };
+      return { ...current, lights: newLights };
+    });
+  }
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050b16] text-slate-100">
+    <main className="relative h-screen max-h-screen overflow-hidden bg-[#050b16] text-slate-100 flex flex-col">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.15),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(56,189,248,0.14),_transparent_25%),linear-gradient(180deg,_rgba(2,6,23,0.92),_rgba(2,6,23,1))]" />
       <div className="pointer-events-none absolute left-[-10%] top-20 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-8%] right-[-8%] h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
 
-      <div className="relative mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <header className="mb-8 grid gap-6 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
-          <div className="space-y-4">
-            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200">
+      <div className="relative mx-auto w-full max-w-[120rem] px-4 py-4 sm:px-6 lg:px-8 flex-1 flex flex-col min-h-0">
+        <header className="mb-4 flex flex-none items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-black tracking-tight text-white">
+              Illumination Studio
+            </h1>
+            <div className="hidden sm:inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-200">
               Interactive Playground
             </div>
-            <div className="space-y-3">
-              <h1 className="max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Modifica geometrías, luz y materiales en tiempo real.
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Este laboratorio conecta el pipeline de rasterización con controles didácticos para que puedas ver cómo cambian las normales, el brillo especular y la forma final del objeto.
-              </p>
-            </div>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Geometry</div>
-              <div className="mt-1 text-lg font-semibold text-white">{activeGeometry.label}</div>
-              <div className="mt-2 text-sm text-slate-400">{activeGeometry.description}</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Material</div>
-              <div className="mt-1 text-lg font-semibold text-white">{activeMaterial.label}</div>
-              <div className="mt-2 text-sm text-slate-400">{activeMaterial.description}</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Triángulos</div>
-              <div className="mt-1 text-lg font-semibold text-white">{activeGeometry.triangles}</div>
-              <div className="mt-2 text-sm text-slate-400">Con la malla actual del generador.</div>
-            </div>
+          <div className="hidden lg:block text-xs text-slate-400">
+            <span className="font-medium text-cyan-100">Click/Drag:</span> Rotate Camera • <span className="font-medium text-cyan-100">Right Click/Shift+Drag:</span> Move Light • <span className="font-medium text-cyan-100">Scroll:</span> Zoom
           </div>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-6">
-            <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 shadow-2xl shadow-cyan-950/20 backdrop-blur">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Viewport</h2>
-                  <p className="text-sm text-slate-400">
-                    Render en vivo con z-buffer, barycentric interpolation y Phong lighting.
-                  </p>
-                </div>
-                <div className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 sm:block">
-                  Click/Drag: Rotate Camera • Right Click/Shift+Drag: Move Light • Scroll: Zoom
-                </div>
-              </div>
-              <CanvasRenderer 
-                width={720} 
-                height={720} 
-                settings={settings} 
-                onSettingsChange={(updates) => setSettings(current => ({ ...current, ...updates }))}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Phong</div>
-                <div className="mt-2 text-lg font-semibold text-white">Ambient</div>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Base light that keeps the back faces visible even when the diffuse term falls off.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Phong</div>
-                <div className="mt-2 text-lg font-semibold text-white">Diffuse</div>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Changes with the angle between the surface normal and the light direction.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Phong</div>
-                <div className="mt-2 text-lg font-semibold text-white">Specular</div>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Highlights tighten as shininess grows, which is easier to study on curved surfaces.
-                </p>
-              </div>
-            </div>
+        <section className="grid gap-6 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] flex-1 min-h-0">
+          <div className="w-full relative flex-1 min-h-0 rounded-[1.5rem] overflow-hidden flex items-center justify-center p-0 border border-white/10 shadow-2xl shadow-cyan-950/20 bg-black/40">
+            <CanvasRenderer 
+              width={2048} 
+              height={2048} 
+              settings={settings} 
+              onSettingsChange={(updates) => setSettings(current => ({ ...current, ...updates }))}
+            />
           </div>
 
-          <aside className="space-y-6 rounded-[2rem] border border-white/10 bg-slate-950/60 p-5 shadow-2xl shadow-cyan-950/20 backdrop-blur">
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-semibold text-white">Controls</h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Move light, rotate the model, and switch geometry or material without reloading.
-                </p>
-              </div>
+          <aside className="relative rounded-[1.5rem] border border-white/10 bg-slate-950/60 shadow-2xl shadow-cyan-950/20 backdrop-blur min-h-0">
+             <div className="absolute inset-0 p-4 flex flex-col">
+                <div className="space-y-4 flex-none mt-2">
+                    <h2 className="text-lg font-semibold text-white">Renderer Controls</h2>
+                </div>
+
+                <div className="overflow-y-auto flex-1 mt-4 space-y-5 pr-2 pb-4 scrollbar-thin">
+                <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <input
+                        type="checkbox"
+                        checked={settings.autoRotate}
+                        onChange={(e) => setSettings(current => ({ ...current, autoRotate: e.target.checked }))}
+                        className="rounded border-slate-700 bg-slate-800 accent-cyan-500"
+                    />
+                    Auto-Rotate
+                </label>
+
+              <OptionGrid<RenderMode>
+                label="Render Mode"
+                options={[
+                  { value: 'phong', label: 'Phong', description: 'Per-pixel lighting' },
+                  { value: 'flat', label: 'Flat', description: 'Per-face lighting' },
+                  { value: 'wireframe', label: 'Wireframe', description: 'Just edges' },
+                ]}
+                value={settings.renderMode}
+                onChange={(renderMode) => setSettings(current => ({ ...current, renderMode }))}
+              />
 
               <OptionGrid
                 label="Geometry"
@@ -262,107 +237,160 @@ export default function PlaygroundPage() {
                 onChange={(material) => setSettings(current => ({ ...current, material }))}
               />
 
-              <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Transform</h3>
-                <SliderRow
-                  label="Scale"
-                  value={settings.scale}
-                  min={0.6}
-                  max={1.8}
-                  step={0.05}
-                  onChange={(scale) => setSettings(current => ({ ...current, scale }))}
-                />
-                <SliderRow
-                  label="Rotation X"
-                  value={settings.rotation.x}
-                  min={-3.14}
-                  max={3.14}
-                  step={0.01}
-                  unit=" rad"
-                  onChange={(value) => updateVector('rotation', 'x', value)}
-                />
-                <SliderRow
-                  label="Rotation Y"
-                  value={settings.rotation.y}
-                  min={-3.14}
-                  max={3.14}
-                  step={0.01}
-                  unit=" rad"
-                  onChange={(value) => updateVector('rotation', 'y', value)}
-                />
-                <SliderRow
-                  label="Rotation Z"
-                  value={settings.rotation.z}
-                  min={-3.14}
-                  max={3.14}
-                  step={0.01}
-                  unit=" rad"
-                  onChange={(value) => updateVector('rotation', 'z', value)}
-                />
-              </div>
+              <details className="group space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.24em] text-slate-400 marker:content-[''] flex justify-between">
+                    Transform
+                     <span className="transition group-open:rotate-180">▼</span>
+                </summary>
+                <div className="pt-4 space-y-4">
+                    <SliderRow
+                      label="Scale"
+                      value={settings.scale}
+                      min={0.6}
+                      max={1.8}
+                      step={0.05}
+                      onChange={(scale) => setSettings(current => ({ ...current, scale }))}
+                    />
+                    <SliderRow
+                      label="Rotation X"
+                      value={settings.rotation.x}
+                      min={-3.14}
+                      max={3.14}
+                      step={0.01}
+                      unit=" rad"
+                      onChange={(value) => updateVector('rotation', 'x', value)}
+                    />
+                    <SliderRow
+                      label="Rotation Y"
+                      value={settings.rotation.y}
+                      min={-3.14}
+                      max={3.14}
+                      step={0.01}
+                      unit=" rad"
+                      onChange={(value) => updateVector('rotation', 'y', value)}
+                    />
+                    <SliderRow
+                      label="Rotation Z"
+                      value={settings.rotation.z}
+                      min={-3.14}
+                      max={3.14}
+                      step={0.01}
+                      unit=" rad"
+                      onChange={(value) => updateVector('rotation', 'z', value)}
+                    />
+                </div>
+              </details>
 
-              <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Light</h3>
-                <SliderRow
-                  label="Position X"
-                  value={settings.lightPosition.x}
-                  min={-5}
-                  max={5}
-                  step={0.1}
-                  onChange={(value) => updateVector('lightPosition', 'x', value)}
-                />
-                <SliderRow
-                  label="Position Y"
-                  value={settings.lightPosition.y}
-                  min={-5}
-                  max={5}
-                  step={0.1}
-                  onChange={(value) => updateVector('lightPosition', 'y', value)}
-                />
-                <SliderRow
-                  label="Position Z"
-                  value={settings.lightPosition.z}
-                  min={-5}
-                  max={5}
-                  step={0.1}
-                  onChange={(value) => updateVector('lightPosition', 'z', value)}
-                />
-                <SliderRow
-                  label="Intensity"
-                  value={settings.lightIntensity}
-                  min={0.25}
-                  max={2.5}
-                  step={0.05}
-                  onChange={(lightIntensity) => setSettings(current => ({ ...current, lightIntensity }))}
-                />
-                <SliderRow
-                  label="Ambient"
-                  value={settings.ambientLight}
-                  min={0.05}
-                  max={0.8}
-                  step={0.01}
-                  onChange={(ambientLight) => setSettings(current => ({ ...current, ambientLight }))}
-                />
-              </div>
+              <details className="group space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4" open>
+                <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.24em] text-slate-400 marker:content-[''] flex justify-between items-center">
+                    Lights
+                     <div className="flex gap-2 items-center">
+                         <button
+                            className="bg-cyan-500/20 text-cyan-200 px-2 py-1 rounded text-xs hover:bg-cyan-500/40"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                setSettings(s => ({
+                                    ...s,
+                                    lights: [...s.lights, {
+                                        id: Math.random().toString(),
+                                        position: { x: -3, y: 1, z: -2 },
+                                        color: [1, 1, 1],
+                                        intensity: 0.5
+                                    }]
+                                }))
+                            }}
+                         >
+                            + Add Light
+                         </button>
+                         <span className="transition group-open:rotate-180">▼</span>
+                     </div>
+                </summary>
+                <div className="pt-4 space-y-6">
+                    {settings.lights.map((light, i) => (
+                        <div key={light.id} className="space-y-4 border-b border-white/10 pb-4 last:border-0 last:pb-0">
+                            <div className="flex justify-between items-center text-sm font-medium text-white">
+                                Light {i + 1}
+                                {settings.lights.length > 1 && (
+                                    <button
+                                        onClick={() => setSettings(s => ({ ...s, lights: s.lights.filter((_, idx) => idx !== i)}))}
+                                        className="text-red-400 hover:text-red-300"
+                                    >
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+                            <SliderRow
+                              label="X"
+                              value={light.position.x}
+                              min={-5}
+                              max={5}
+                              step={0.1}
+                              onChange={(value) => updateLight(i, { position: { ...light.position, x: value } })}
+                            />
+                            <SliderRow
+                              label="Y"
+                              value={light.position.y}
+                              min={-5}
+                              max={5}
+                              step={0.1}
+                              onChange={(value) => updateLight(i, { position: { ...light.position, y: value } })}
+                            />
+                            <SliderRow
+                              label="Z"
+                              value={light.position.z}
+                              min={-5}
+                              max={5}
+                              step={0.1}
+                              onChange={(value) => updateLight(i, { position: { ...light.position, z: value } })}
+                            />
+                            <SliderRow
+                              label="Intensity"
+                              value={light.intensity}
+                              min={0}
+                              max={2.5}
+                              step={0.05}
+                              onChange={(intensity) => updateLight(i, { intensity })}
+                            />
+                        </div>
+                    ))}
+                    
+                    <div className="border-t border-white/10 pt-4 space-y-4">
+                        <SliderRow
+                          label="Ambient Light"
+                          value={settings.ambientLight}
+                          min={0}
+                          max={0.8}
+                          step={0.01}
+                          onChange={(ambientLight) => setSettings(current => ({ ...current, ambientLight }))}
+                        />
+                    </div>
+                </div>
+              </details>
 
-              <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Camera</h3>
-                <SliderRow
-                  label="Position Z"
-                  value={settings.cameraPosition.z}
-                  min={2.5}
-                  max={7.5}
-                  step={0.05}
-                  onChange={(value) => updateVector('cameraPosition', 'z', value)}
-                />
-                <SliderRow
-                  label="Position Y"
-                  value={settings.cameraPosition.y}
-                  min={-1}
-                  max={2}
-                  step={0.05}
-                  onChange={(value) => updateVector('cameraPosition', 'y', value)}
-                />
+              <details className="group space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.24em] text-slate-400 marker:content-[''] flex justify-between">
+                    Camera & Environment
+                     <span className="transition group-open:rotate-180">▼</span>
+                </summary>
+                <div className="pt-4 space-y-4">
+                    <SliderRow
+                      label="Position Z"
+                      value={settings.cameraPosition.z}
+                      min={2.5}
+                      max={7.5}
+                      step={0.05}
+                      onChange={(value) => updateVector('cameraPosition', 'z', value)}
+                    />
+                    <SliderRow
+                      label="Position Y"
+                      value={settings.cameraPosition.y}
+                      min={-1}
+                      max={2}
+                      step={0.05}
+                      onChange={(value) => updateVector('cameraPosition', 'y', value)}
+                    />
+                </div>
+              </details>
               </div>
 
               <button
@@ -370,54 +398,21 @@ export default function PlaygroundPage() {
                 onClick={() => setSettings({
                   geometry: 'cube',
                   material: 'gold',
+                  renderMode: 'phong',
+                  autoRotate: true,
                   scale: 1,
                   rotation: { x: 0.45, y: 0.75, z: 0.05 },
-                  lightPosition: { x: 3.5, y: 2.5, z: 3.5 },
-                  lightIntensity: 1,
+                  lights: [{ id: '1', position: { x: 3.5, y: 2.5, z: 3.5 }, intensity: 1, color: [1, 1, 1] }],
                   ambientLight: 0.28,
                   cameraPosition: { x: 0, y: 0.35, z: 4.5 },
                   backgroundColor: [0.04, 0.07, 0.12],
                 })}
-                className="w-full rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-400/15"
+                className="w-full flex-none mt-2 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-400/15"
               >
                 Reset to demo values
               </button>
-            </div>
+             </div>
           </aside>
-        </section>
-
-        <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-            <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Pipeline</div>
-            <h3 className="mt-2 text-lg font-semibold text-white">Transform + light</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              El objeto se transforma en CPU y se ilumina con Phong antes de rasterizarse en el canvas.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-            <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Normals</div>
-            <h3 className="mt-2 text-lg font-semibold text-white">Shading pedagógico</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Cambia a esfera o toro para ver cómo la curvatura altera el brillo especular.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-            <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Material</div>
-            <h3 className="mt-2 text-lg font-semibold text-white">Shininess</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Los materiales metálicos concentran el highlight, mientras que los plásticos lo suavizan.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-            <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Exercise</div>
-            <h3 className="mt-2 text-lg font-semibold text-white">Mueve la luz atrás</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Observa cómo la componente ambiental mantiene legible la geometría cuando la luz sale del frente.
-            </p>
-          </article>
         </section>
       </div>
     </main>

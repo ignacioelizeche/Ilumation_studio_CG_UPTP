@@ -2,7 +2,7 @@ import { Vector3, Matrix4 } from '../math';
 import { Mesh } from '../geometry/Mesh';
 import { Scene } from '../scene/Scene';
 import { phongLighting } from '../lighting/PhongLighting';
-import { rasterizeTriangle } from './Rasterizer';
+import { rasterizeTriangle, renderModeType } from './Rasterizer';
 
 export class Renderer {
   width: number;
@@ -13,7 +13,7 @@ export class Renderer {
     this.height = height;
   }
 
-  render(scene: Scene): ImageData {
+  render(scene: Scene, renderMode: renderModeType = 'phong'): ImageData {
     const framebuffer = new Uint8ClampedArray(this.width * this.height * 4);
     const zbuffer: number[][] = Array(this.height)
       .fill(null)
@@ -44,7 +44,8 @@ export class Renderer {
         scene.ambientLight,
         scene.camera.position,
         framebuffer,
-        zbuffer
+        zbuffer,
+        renderMode
       );
     }
 
@@ -61,7 +62,8 @@ export class Renderer {
     ambientLight: [number, number, number],
     cameraPos: Vector3,
     framebuffer: Uint8ClampedArray,
-    zbuffer: number[][]
+    zbuffer: number[][],
+    renderMode: renderModeType
   ): void {
     const mvMatrix = viewMatrix.multiply(modelMatrix);
 
@@ -97,6 +99,7 @@ export class Renderer {
         ambientLight,
         cameraPos,
         material: mesh.material,
+        renderMode,
       });
     }
   }
