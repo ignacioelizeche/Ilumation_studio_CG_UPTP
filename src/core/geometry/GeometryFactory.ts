@@ -172,16 +172,15 @@ export class GeometryFactory {
 
     // Top cap
     for (let x = 0; x < radialSegments; x++) {
-      const a = x;
-      const b = x + 1;
+      const a = heightSegments * (radialSegments + 1) + x;
+      const b = heightSegments * (radialSegments + 1) + x + 1;
       faces.push([topCenter, b, a]);
     }
 
     // Bottom cap
-    const bottomStartIdx = heightSegments * (radialSegments + 1);
     for (let x = 0; x < radialSegments; x++) {
-      const a = bottomStartIdx + x;
-      const b = bottomStartIdx + x + 1;
+      const a = x;
+      const b = x + 1;
       faces.push([bottomCenter, a, b]);
     }
 

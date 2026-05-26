@@ -201,10 +201,15 @@ export default function PlaygroundPage() {
                   </p>
                 </div>
                 <div className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 sm:block">
-                  Drag the controls to update the frame
+                  Click/Drag: Rotate Camera • Right Click/Shift+Drag: Move Light • Scroll: Zoom
                 </div>
               </div>
-              <CanvasRenderer width={720} height={720} settings={settings} />
+              <CanvasRenderer 
+                width={720} 
+                height={720} 
+                settings={settings} 
+                onSettingsChange={(updates) => setSettings(current => ({ ...current, ...updates }))}
+              />
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
