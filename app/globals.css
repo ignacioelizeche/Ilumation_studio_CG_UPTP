@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Math visualization styles */
+.math-formula {
+  @apply font-mono text-sm bg-gray-800 p-2 rounded border border-gray-700;
+}
+
+.code-block {
+  @apply bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto font-mono text-sm;
+}
+
+.canvas-container {
+  @apply bg-gray-800 border-2 border-gray-700 rounded-lg overflow-hidden;
+}
+
+.control-panel {
+  @apply bg-gray-800 p-4 rounded-lg border border-gray-700;
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-200;
+}
