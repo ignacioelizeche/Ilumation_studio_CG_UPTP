@@ -82,49 +82,21 @@ export class Renderer {
       this.worldToScreen(vpMatrix.multiply(modelMatrix).transformVector(v))
     );
 
-    // Compute vertex colors with Phong lighting
-    const vertexColors = mesh.vertices.map((_, i) => {
-      let color = new Vector3(0, 0, 0);
-
-      for (const light of lights) {
-        const lightDir = light.position.subtract(worldVertices[i]).normalize();
-        const viewDir = cameraPos.subtract(worldVertices[i]).normalize();
-
-        color = color.add(
-          phongLighting({
-            normal: worldNormals[i],
-            lightDirection: lightDir,
-            viewDirection: viewDir,
-            material: mesh.material,
-            lightColor: light.color,
-            lightIntensity: light.intensity,
-            ambientLight: new Vector3(
-              ambientLight[0],
-              ambientLight[1],
-              ambientLight[2]
-            ),
-          })
-        );
-      }
-
-      return new Vector3(
-        Math.max(0, Math.min(1, color.x)),
-        Math.max(0, Math.min(1, color.y)),
-        Math.max(0, Math.min(1, color.z))
-      );
-    });
-
-    // Rasterize triangles
+    // Rasterize triangles using Phong Shading (per-pixel lighting)
     for (const face of mesh.faces) {
       rasterizeTriangle({
         screenVertices,
-        cameraVertices: transformedVertices,
-        vertexColors,
+        worldVertices,
+        worldNormals,
         face,
         zbuffer,
         framebuffer,
         width: this.width,
         height: this.height,
+        lights,
+        ambientLight,
+        cameraPos,
+        material: mesh.material,
       });
     }
   }

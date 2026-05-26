@@ -1,14 +1,22 @@
 import { Vector3 } from '../math/Vector3';
+import { phongLighting } from '../lighting/PhongLighting';
+import { Material } from '../materials/Material';
+import { Light } from '../lighting/Light';
 
 export interface RasterizationData {
   screenVertices: Vector3[];
-  cameraVertices: Vector3[];
-  vertexColors: Vector3[];
+  worldVertices: Vector3[];
+  worldNormals: Vector3[];
   face: number[];
   zbuffer: number[][];
   framebuffer: Uint8ClampedArray;
   width: number;
   height: number;
+  // Illumination parameters
+  lights: Light[];
+  ambientLight: [number, number, number];
+  cameraPos: Vector3;
+  material: Material;
 }
 
 function barycentricCoordinates(
@@ -17,38 +25,38 @@ function barycentricCoordinates(
   b: Vector3,
   c: Vector3
 ): [number, number, number] | null {
-  const v0 = c.subtract(a);
-  const v1 = b.subtract(a);
-  const v2 = p.subtract(a);
-
-  const dot00 = v0.dot(v0);
-  const dot01 = v0.dot(v1);
-  const dot02 = v0.dot(v2);
-  const dot11 = v1.dot(v1);
-  const dot12 = v1.dot(v2);
-
-  const invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
-  const u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-  const v = (dot00 * dot12 - dot01 * dot02) * invDenom;
-  const w = 1 - u - v;
-
-  if (w < -1e-6 || u < -1e-6 || v < -1e-6) {
+  const denom = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
+  
+  // Degenerate triangle
+  if (Math.abs(denom) < 1e-8) {
     return null;
   }
 
-  return [w, u, v];
+  const u = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / denom;
+  const v = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / denom;
+  const w = 1 - u - v;
+
+  if (u < -1e-6 || v < -1e-6 || w < -1e-6) {
+    return null;
+  }
+
+  return [u, v, w];
 }
 
 export function rasterizeTriangle(data: RasterizationData): void {
   const {
     screenVertices,
-    cameraVertices,
-    vertexColors,
+    worldVertices,
+    worldNormals,
     face,
     zbuffer,
     framebuffer,
     width,
     height,
+    lights,
+    ambientLight,
+    cameraPos,
+    material,
   } = data;
 
   if (face.length !== 3) return;
@@ -96,11 +104,41 @@ export function rasterizeTriangle(data: RasterizationData): void {
       if (z < zbuffer[y][x]) {
         zbuffer[y][x] = z;
 
-        // Interpolate color
-        const color = vertexColors[i0]
+        // Interpolate world position and normal
+        const worldPos = worldVertices[i0]
           .multiply(w0)
-          .add(vertexColors[i1].multiply(w1))
-          .add(vertexColors[i2].multiply(w2));
+          .add(worldVertices[i1].multiply(w1))
+          .add(worldVertices[i2].multiply(w2));
+
+        const normal = worldNormals[i0]
+          .multiply(w0)
+          .add(worldNormals[i1].multiply(w1))
+          .add(worldNormals[i2].multiply(w2))
+          .normalize();
+
+        // Calculate Pixel Color using Phong
+        let color = new Vector3(0, 0, 0);
+
+        for (const light of lights) {
+          const lightDir = light.position.subtract(worldPos).normalize();
+          const viewDir = cameraPos.subtract(worldPos).normalize();
+
+          color = color.add(
+            phongLighting({
+              normal,
+              lightDirection: lightDir,
+              viewDirection: viewDir,
+              material,
+              lightColor: light.color,
+              lightIntensity: light.intensity,
+              ambientLight: new Vector3(
+                ambientLight[0],
+                ambientLight[1],
+                ambientLight[2]
+              ),
+            })
+          );
+        }
 
         // Write to framebuffer
         const index = (y * width + x) * 4;
